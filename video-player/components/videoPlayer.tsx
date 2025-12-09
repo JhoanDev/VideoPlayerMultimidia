@@ -1,124 +1,217 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
+import { Play, Pause, Volume2, VolumeX, SkipForward, SkipBack, Menu } from "lucide-react";
 
-const videoURL =
-  "https://www.youtube.com/embed/VgDgWzBL7s4?enablejsapi=1&rel=0&modestbranding=1";
+const videoList = [
+  { title: "Rock Lee vs Gaara", src: "/videos/Rock_lee_Gaara_1min.mp4" },
+  { title: "Minato Hero", src: "/videos/Minato_Hero_1min.mp4" },
+  { title: "Madara Centuries", src: "/videos/Madara_Centuries_1min.mp4" }
+];
 
 export default function VideoPlayer() {
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(100);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const currentVideo = videoList[currentIndex];
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const update = () => setCurrentTime(video.currentTime);
+    const load = () => setDuration(video.duration);
+    const end = () => handleNext();
+
+    video.addEventListener("timeupdate", update);
+    video.addEventListener("loadedmetadata", load);
+    video.addEventListener("ended", end);
+
+    return () => {
+      video.removeEventListener("timeupdate", update);
+      video.removeEventListener("loadedmetadata", load);
+      video.removeEventListener("ended", end);
+    };
+  }, [currentIndex]);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+
+    const checkDuration = () => {
+      if (!isNaN(v.duration) && v.duration > 0) setDuration(v.duration);
+    };
+
+    checkDuration();
+    const t = setTimeout(checkDuration, 150);
+    return () => clearTimeout(t);
+  }, [currentVideo]);
 
   const togglePlay = () => {
-    if (!iframeRef.current) return;
-    const player = iframeRef.current.contentWindow;
-
-    player?.postMessage(
-      JSON.stringify({
-        event: "command",
-        func: isPlaying ? "pauseVideo" : "playVideo",
-      }),
-      "*"
-    );
-
+    const v = videoRef.current;
+    if (!v) return;
+    isPlaying ? v.pause() : v.play();
     setIsPlaying(!isPlaying);
   };
 
-  const handleVolume = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = Number(e.target.value);
-    setVolume(newVolume);
-    setIsMuted(newVolume === 0);
+  const format = (t: number) =>
+    isNaN(t)
+      ? "0:00"
+      : `${Math.floor(t / 60)}:${Math.floor(t % 60)
+        .toString()
+        .padStart(2, "0")}`;
 
-    iframeRef.current?.contentWindow?.postMessage(
-      JSON.stringify({
-        event: "command",
-        func: "setVolume",
-        args: [newVolume],
-      }),
-      "*"
-    );
+  const changeTime = (e: any) => {
+    const v = videoRef.current;
+    if (!v) return;
+    const value = Number(e.target.value);
+    v.currentTime = value;
+    setCurrentTime(value);
+  };
+
+  const changeVolume = (e: any) => {
+    const value = Number(e.target.value);
+    setVolume(value);
+    setIsMuted(value === 0);
+    if (videoRef.current) videoRef.current.volume = value;
   };
 
   const toggleMute = () => {
-    if (!iframeRef.current) return;
+    if (!videoRef.current) return;
+    videoRef.current.muted = !isMuted;
+    setIsMuted(!isMuted);
+  };
 
-    const player = iframeRef.current.contentWindow;
+  const skip = (sec: number) => {
+    if (!videoRef.current) return;
+    videoRef.current.currentTime += sec;
+  };
 
-    if (!isMuted) {
-      player?.postMessage(
-        JSON.stringify({
-          event: "command",
-          func: "mute",
-        }),
-        "*"
-      );
-      setVolume(0);
-      setIsMuted(true);
-    } else {
-      player?.postMessage(
-        JSON.stringify({
-          event: "command",
-          func: "unMute",
-        }),
-        "*"
-      );
-      setVolume(100);
-      setIsMuted(false);
-    }
+  const handleNext = () => {
+    const next = currentIndex < videoList.length - 1 ? currentIndex + 1 : 0;
+    setCurrentIndex(next);
+    setIsPlaying(true);
+    setTimeout(() => videoRef.current?.play(), 200);
+  };
+
+  const handlePrev = () => {
+    const prev = currentIndex > 0 ? currentIndex - 1 : videoList.length - 1;
+    setCurrentIndex(prev);
+    setIsPlaying(true);
+    setTimeout(() => videoRef.current?.play(), 200);
+  };
+
+  const selectVideo = (i: number) => {
+    setCurrentIndex(i);
+    setIsPlaying(true);
+    setMenuOpen(false);
+    setTimeout(() => videoRef.current?.play(), 200);
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 bg-gradient-to-b from-black to-neutral-900 text-white">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-green-400 text-center drop-shadow">
-        jhoan Player
-      </h1>
+    <div className="bg-black text-white min-h-screen flex flex-col md:flex-row">
 
-      <div className="w-full max-w-3xl bg-neutral-800/50 backdrop-blur-xl rounded-2xl shadow-2xl p-6 border border-neutral-700">
+      <button
+        onClick={() => setMenuOpen(!menuOpen)}
+        className="md:hidden p-3 bg-purple-800 w-full flex items-center gap-2"
+      >
+        <Menu /> Abrir lista
+      </button>
 
-        <div className="w-full aspect-video rounded-xl overflow-hidden border-2 border-green-500 shadow-xl">
-          <iframe
-            ref={iframeRef}
-            className="w-full h-full"
-            src={videoURL}
-            title="YouTube Player"
-            allow="autoplay; encrypted-media"
-            allowFullScreen
-          />
-        </div>
+      <div
+        className={`md:w-64 bg-[#120019] border-r border-purple-700 p-4 space-y-3 overflow-y-auto
+        ${menuOpen ? "block" : "hidden"} md:block`}
+      >
+        <h2 className="text-xl font-bold text-purple-400">Lista de Vídeos</h2>
 
-        <div className="mt-6 flex flex-col gap-6">
-
+        {videoList.map((v, i) => (
           <button
-            onClick={togglePlay}
-            className="flex items-center justify-center gap-3 w-full py-3 text-lg font-semibold rounded-xl bg-green-500 hover:bg-green-600 text-black transition-all shadow-lg active:scale-95"
+            key={i}
+            onClick={() => selectVideo(i)}
+            className={`w-full text-left p-3 rounded-lg transition ${i === currentIndex
+                ? "bg-purple-700 text-white"
+                : "bg-[#1a001f] text-purple-300 hover:bg-purple-900"
+              }`}
           >
-            {isPlaying ? <Pause size={26} /> : <Play size={26} />}
-            {isPlaying ? "Pause" : "Play"}
+            {v.title}
           </button>
+        ))}
+      </div>
 
-          <div className="flex items-center gap-4 w-full">
+      <div className="flex-1 flex flex-col items-center justify-center p-3 md:p-6">
+        <h1 className="text-3xl font-bold mb-4 text-purple-400 text-center">
+          Jhoan Player
+        </h1>
+
+        <div className="w-full max-w-4xl bg-[#1a001f] p-4 rounded-xl shadow-xl">
+
+          <video
+            ref={videoRef}
+            src={currentVideo.src}
+            className="w-full aspect-video object-cover rounded-xl mb-3"
+            controls={false}
+          />
+
+          <div className="flex justify-between text-sm mb-1">
+            <span>{format(currentTime)}</span>
+            <span>{format(duration)}</span>
+          </div>
+
+          <input
+            type="range"
+            min={0}
+            max={duration}
+            value={currentTime}
+            onChange={changeTime}
+            className="w-full mb-4 accent-purple-500"
+          />
+
+          <div className="grid grid-cols-5 gap-2 md:flex md:items-center md:justify-between">
+            <button onClick={handlePrev} className="p-3 bg-purple-800 rounded-xl">
+              <SkipBack />
+            </button>
+
+            <button onClick={() => skip(-10)} className="p-3 bg-purple-800 rounded-xl">
+              -10s
+            </button>
+
             <button
-              onClick={toggleMute}
-              className="p-3 rounded-xl bg-neutral-700 hover:bg-neutral-600 transition shadow"
+              onClick={togglePlay}
+              className="p-3 bg-purple-500 text-black font-bold rounded-xl"
             >
-              {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
+              {isPlaying ? <Pause /> : <Play />}
+            </button>
+
+            <button onClick={() => skip(10)} className="p-3 bg-purple-800 rounded-xl">
+              +10s
+            </button>
+
+            <button onClick={handleNext} className="p-3 bg-purple-800 rounded-xl">
+              <SkipForward />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-4 mt-4">
+            <button onClick={toggleMute} className="p-2 bg-purple-800 rounded-xl">
+              {isMuted ? <VolumeX /> : <Volume2 />}
             </button>
 
             <input
               type="range"
-              min="0"
-              max="100"
+              min={0}
+              max={1}
+              step={0.01}
               value={volume}
-              onChange={handleVolume}
-              className="w-full accent-green-400 cursor-pointer"
+              onChange={changeVolume}
+              className="w-full accent-purple-400"
             />
-
-            <span className="w-14 text-center font-semibold text-green-300">
-              {volume}%
-            </span>
           </div>
         </div>
       </div>
