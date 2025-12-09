@@ -44,14 +44,7 @@ export default function VideoPlayer() {
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-
-    const checkDuration = () => {
-      if (!isNaN(v.duration) && v.duration > 0) setDuration(v.duration);
-    };
-
-    checkDuration();
-    const t = setTimeout(checkDuration, 150);
-    return () => clearTimeout(t);
+    if (!isNaN(v.duration)) setDuration(v.duration);
   }, [currentVideo]);
 
   const togglePlay = () => {
@@ -65,8 +58,8 @@ export default function VideoPlayer() {
     isNaN(t)
       ? "0:00"
       : `${Math.floor(t / 60)}:${Math.floor(t % 60)
-        .toString()
-        .padStart(2, "0")}`;
+          .toString()
+          .padStart(2, "0")}`;
 
   const changeTime = (e: any) => {
     const v = videoRef.current;
@@ -135,10 +128,11 @@ export default function VideoPlayer() {
           <button
             key={i}
             onClick={() => selectVideo(i)}
-            className={`w-full text-left p-3 rounded-lg transition ${i === currentIndex
+            className={`w-full text-left p-3 rounded-lg transition ${
+              i === currentIndex
                 ? "bg-purple-700 text-white"
                 : "bg-[#1a001f] text-purple-300 hover:bg-purple-900"
-              }`}
+            }`}
           >
             {v.title}
           </button>
@@ -170,30 +164,30 @@ export default function VideoPlayer() {
             max={duration}
             value={currentTime}
             onChange={changeTime}
-            className="w-full mb-4 accent-purple-500"
+            className="w-full md:h-3 md:bg-gray-700 md:rounded-full"
+            style={{
+              "--value-percent": `${(currentTime / duration) * 100}%`
+            } as React.CSSProperties}
           />
 
           <div className="grid grid-cols-5 gap-2 md:flex md:items-center md:justify-between">
-            <button onClick={handlePrev} className="p-3 bg-purple-800 rounded-xl">
+            <button className="p-3 bg-purple-800 rounded-xl" onClick={handlePrev}>
               <SkipBack />
             </button>
 
-            <button onClick={() => skip(-10)} className="p-3 bg-purple-800 rounded-xl">
+            <button className="p-3 bg-purple-800 rounded-xl" onClick={() => skip(-10)}>
               -10s
             </button>
 
-            <button
-              onClick={togglePlay}
-              className="p-3 bg-purple-500 text-black font-bold rounded-xl"
-            >
+            <button className="p-3 bg-purple-500 text-black font-bold rounded-xl" onClick={togglePlay}>
               {isPlaying ? <Pause /> : <Play />}
             </button>
 
-            <button onClick={() => skip(10)} className="p-3 bg-purple-800 rounded-xl">
+            <button className="p-3 bg-purple-800 rounded-xl" onClick={() => skip(10)}>
               +10s
             </button>
 
-            <button onClick={handleNext} className="p-3 bg-purple-800 rounded-xl">
+            <button className="p-3 bg-purple-800 rounded-xl" onClick={handleNext}>
               <SkipForward />
             </button>
           </div>
@@ -210,7 +204,10 @@ export default function VideoPlayer() {
               step={0.01}
               value={volume}
               onChange={changeVolume}
-              className="w-full accent-purple-400"
+              className="w-full md:h-3 md:bg-gray-700 md:rounded-full"
+              style={{
+                "--value-percent": `${volume * 100}%`
+              } as React.CSSProperties}
             />
           </div>
         </div>
